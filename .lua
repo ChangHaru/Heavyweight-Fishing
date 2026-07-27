@@ -74,6 +74,91 @@ local function countAttachments(buoy)
     return count
 end
 
+_G.CharacterWalkSpeed = 30
+_G.CharacterJumpPower = 16
+_G.CharacterEnabled = false
+
+local function getCharacter()
+    return LocalPlayer and LocalPlayer.Character
+end
+
+local function getHumanoid()
+    local character = getCharacter()
+    if not character then
+        return nil
+    end
+
+    return character:FindFirstChildOfClass("Humanoid")
+end
+
+local function setCharacterValues(humanoid, speed, jumpPower)
+    if not humanoid then
+        return
+    end
+
+    if humanoid.WalkSpeed ~= nil then
+        humanoid.WalkSpeed = speed
+    end
+
+    if humanoid.JumpPower ~= nil then
+        humanoid.JumpPower = jumpPower
+    end
+
+    if humanoid.JumpHeight ~= nil then
+        humanoid.JumpHeight = jumpPower
+    end
+end
+
+local function applyCharacterSettings()
+    if not _G.CharacterEnabled then
+        return
+    end
+
+    local humanoid = getHumanoid()
+    if not humanoid then
+        return
+    end
+
+    setCharacterValues(humanoid, _G.CharacterWalkSpeed or humanoid.WalkSpeed, _G.CharacterJumpPower or humanoid.JumpPower)
+end
+
+local function disableCharacterSettings()
+    local humanoid = getHumanoid()
+    if not humanoid then
+        return
+    end
+
+    setCharacterValues(humanoid, 16, 16)
+end
+
+local function applyCharacterSettingsOnSpawn()
+    if not _G.CharacterEnabled then
+        return
+    end
+
+    local character = getCharacter()
+    if not character then
+        return
+    end
+
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        applyCharacterSettings()
+    else
+        character:WaitForChild("Humanoid", 5)
+        applyCharacterSettings()
+    end
+end
+
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(0.1)
+    applyCharacterSettingsOnSpawn()
+end)
+
+if LocalPlayer.Character then
+    applyCharacterSettingsOnSpawn()
+end
+
 local function castFishing()
     local character = LocalPlayer.Character
     local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
@@ -202,7 +287,8 @@ local Window = Fluent:CreateWindow({
 
 local Tabs = {
     Main = Window:AddTab({ Title = "Auto Fish", Icon = "FishingRod" }),
-    Skills = Window:AddTab({ Title = "Auto Skills", Icon = "Zap" }),
+    Skills = Window:AddTab({ Title = "Auto Skills", Icon = "activity" }),
+    Character = Window:AddTab({ Title = "Character", Icon = "user" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
@@ -216,8 +302,6 @@ local AutoFishToggle = Tabs.Main:AddToggle("AutoFishToggle", {
 
 AutoFishToggle:OnChanged(function()
     _G.AutoFish = Options.AutoFishToggle.Value
-    local status = _G.AutoFish and "เปิดใช้งาน" or "ปิดใช้งาน"
-    print("Auto Fish: " .. status)
 end)
 
 
@@ -228,8 +312,6 @@ local AutoSellToggle = Tabs.Main:AddToggle("AutoSellToggle", {
 
 AutoSellToggle:OnChanged(function()
     _G.AutoSell = Options.AutoSellToggle.Value
-    local status = _G.AutoSell and "เปิดใช้งาน" or "ปิดใช้งาน"
-    print("Auto Sell: " .. status)
 end)
 
 -- Auto Skills Tab
@@ -240,7 +322,6 @@ local AutoZToggle = Tabs.Skills:AddToggle("AutoZToggle", {
 
 AutoZToggle:OnChanged(function()
     _G.AutoZ = Options.AutoZToggle.Value
-    print("Auto Z: " .. (_G.AutoZ and "เปิดใช้งาน" or "ปิดใช้งาน"))
 end)
 
 local AutoXToggle = Tabs.Skills:AddToggle("AutoXToggle", {
@@ -250,7 +331,6 @@ local AutoXToggle = Tabs.Skills:AddToggle("AutoXToggle", {
 
 AutoXToggle:OnChanged(function()
     _G.AutoX = Options.AutoXToggle.Value
-    print("Auto X: " .. (_G.AutoX and "เปิดใช้งาน" or "ปิดใช้งาน"))
 end)
 
 local AutoCToggle = Tabs.Skills:AddToggle("AutoCToggle", {
@@ -260,7 +340,6 @@ local AutoCToggle = Tabs.Skills:AddToggle("AutoCToggle", {
 
 AutoCToggle:OnChanged(function()
     _G.AutoC = Options.AutoCToggle.Value
-    print("Auto C: " .. (_G.AutoC and "เปิดใช้งาน" or "ปิดใช้งาน"))
 end)
 
 local AutoVToggle = Tabs.Skills:AddToggle("AutoVToggle", {
@@ -270,8 +349,66 @@ local AutoVToggle = Tabs.Skills:AddToggle("AutoVToggle", {
 
 AutoVToggle:OnChanged(function()
     _G.AutoV = Options.AutoVToggle.Value
-    print("Auto V: " .. (_G.AutoV and "เปิดใช้งาน" or "ปิดใช้งาน"))
 end)
+
+local CharacterTab = Tabs.Character
+
+local SpeedSlider = CharacterTab:AddSlider("CharacterSpeed", {
+    Title = "Walk Speed",
+    Default = _G.CharacterWalkSpeed,
+    Min = 30,
+    Max = 200,
+    Rounding = 1,
+    Suffix = ""
+})
+
+SpeedSlider:OnChanged(function(Value)
+    _G.CharacterWalkSpeed = Value
+    applyCharacterSettings()
+end)
+
+local JumpSlider = CharacterTab:AddSlider("CharacterJump", {
+    Title = "Jump Power",
+    Default = _G.CharacterJumpPower,
+    Min = 16,
+    Max = 200,
+    Rounding = 1,
+    Suffix = ""
+})
+
+JumpSlider:OnChanged(function(Value)
+    _G.CharacterJumpPower = Value
+    applyCharacterSettings()
+end)
+
+local CharacterToggle = CharacterTab:AddToggle("CharacterEnabled", {
+    Title = "Enable Character Mod",
+    Default = _G.CharacterEnabled
+})
+
+CharacterToggle:OnChanged(function()
+    _G.CharacterEnabled = Options.CharacterEnabled.Value
+
+    if _G.CharacterEnabled then
+        applyCharacterSettings()
+    else
+        disableCharacterSettings()
+    end
+end)
+
+local ResetCharacterButton = CharacterTab:AddButton({
+    Title = "Reset Character Stats",
+    Description = "Reset speed and jump to default values",
+    Callback = function()
+        _G.CharacterWalkSpeed = 16
+        _G.CharacterJumpPower = 16
+        SpeedSlider:SetValue(_G.CharacterWalkSpeed)
+        JumpSlider:SetValue(_G.CharacterJumpPower)
+        if _G.CharacterEnabled then
+            applyCharacterSettings()
+        end
+    end
+})
 
 local SkillIntervalSlider = Tabs.Skills:AddSlider("SkillInterval", {
     Title = "Delay(s)",
