@@ -12,6 +12,7 @@ _G.AutoX = false
 _G.AutoC = false
 _G.AutoV = false
 _G.AutoSell = false
+_G.FishCFrame = nil
 
 local function getFishingUI()
     local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
@@ -131,6 +132,29 @@ local function disableCharacterSettings()
     setCharacterValues(humanoid, 16, 16)
 end
 
+local function setFishCFrame()
+    local character = getCharacter()
+    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
+    if humanoidRootPart then
+        _G.FishCFrame = humanoidRootPart.CFrame
+        print("Fishing position set:", _G.FishCFrame.Position)
+    end
+end
+
+local function applyFishingPositionLock()
+    if not _G.AutoFish or not _G.FishCFrame then
+        return
+    end
+
+    local character = getCharacter()
+    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
+    if humanoidRootPart then
+        humanoidRootPart.CFrame = _G.FishCFrame
+        humanoidRootPart.Velocity = Vector3.new()
+        humanoidRootPart.RotVelocity = Vector3.new()
+    end
+end
+
 local function applyCharacterSettingsOnSpawn()
     if not _G.CharacterEnabled then
         return
@@ -172,6 +196,10 @@ local function castFishing()
 
         if fishingEvent then
             local rootCFrame = humanoidRootPart.CFrame
+            if _G.FishCFrame then
+                rootCFrame = _G.FishCFrame
+            end
+
             local forward = rootCFrame.LookVector
             local castPosition = Vector3.new(
                 rootCFrame.Position.X + forward.X * 6,
@@ -198,6 +226,8 @@ RunService.RenderStepped:Connect(function()
     end
 
     local fishingUI = getFishingUI()
+    applyFishingPositionLock()
+
     if fishingUI and fishingUI.Visible then
         centerFishingUI(fishingUI)
     end
@@ -276,7 +306,7 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/d
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
 local Window = Fluent:CreateWindow({
-    Title = "Heavyweight Fishing V.1.0.0.0",
+    Title = "Heavyweight Fishing V.1.0.1.0",
     SubTitle = "by Haru",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
@@ -302,6 +332,9 @@ local AutoFishToggle = Tabs.Main:AddToggle("AutoFishToggle", {
 
 AutoFishToggle:OnChanged(function()
     _G.AutoFish = Options.AutoFishToggle.Value
+    if _G.AutoFish and _G.FishCFrame then
+        applyFishingPositionLock()
+    end
 end)
 
 
@@ -313,6 +346,14 @@ local AutoSellToggle = Tabs.Main:AddToggle("AutoSellToggle", {
 AutoSellToggle:OnChanged(function()
     _G.AutoSell = Options.AutoSellToggle.Value
 end)
+
+local SetFishPositionButton = Tabs.Main:AddButton({
+    Title = "Set Fish Position",
+    Description = "Save current position as fishing location.",
+    Callback = function()
+        setFishCFrame()
+    end
+})
 
 -- Auto Skills Tab
 local AutoZToggle = Tabs.Skills:AddToggle("AutoZToggle", {
