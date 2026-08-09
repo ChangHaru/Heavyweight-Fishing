@@ -13,6 +13,19 @@ _G.AutoC = false
 _G.AutoV = false
 _G.AutoSell = false
 _G.FishCFrame = nil
+_G.TeleportLocations = {
+    ["beginning isle"] = CFrame.new(-207.387665, 6.76193953, 32.3229866, 0.768884122, -5.12820471e-08, 0.639388144, 8.21569088e-08, 1, -1.85913631e-08, -0.639388144, 6.68247608e-08, 0.768884122),
+    ["bamboo isle"] = CFrame.new(-1234.19836, 6.76233625, 1.52872586, -0.0144769866, -5.80721284e-08, -0.999895215, 3.66464121e-08, 1, -5.86088014e-08, 0.999895215, -3.7491052e-08, -0.0144769866),
+    ["Frost lsle"] = CFrame.new(-1498.23523, 53.1889381, -1420.85767, -0.226733074, 1.06829778e-09, -0.973956943, -4.7477724e-09, 1, 2.20212493e-09, 0.973956943, 5.12342035e-09, -0.226733074),
+    ["FallOut isls"] = CFrame.new(62.1234436, 6.76233625, 1177.48193, 0.995004058, -3.86241368e-08, -0.0998347551, 3.63026551e-08, 1, -2.50699337e-08, 0.0998347551, 2.13204192e-08, 0.995004058),
+    ["sovereign isle"] = CFrame.new(-1262.87866, 6.76233625, 1240.38831, 0.884532571, 6.60379973e-10, -0.466478407, 3.28130234e-08, 1, 6.36354613e-08, 0.466478407, -7.15942008e-08, 0.884532571),
+    ["perch isle"] = CFrame.new(18.7707157, 9.27601719, -1337.08862, -0.738087237, -3.52821203e-08, -0.674705327, 1.82395432e-08, 1, -7.22456051e-08, 0.674705327, -6.56298766e-08, -0.738087237),
+    ["Frost isle"] = CFrame.new(-1498.23523, 53.1889381, -1420.85767, -0.226733074, -1.71602377e-08, -0.973956943, 7.58581251e-08, 1, -3.52785428e-08, 0.973956943, -8.18813604e-08, -0.226733074),
+    ["cocont isie"] = CFrame.new(1369.427, 9.27561855, -1454.18469, -0.699772358, -5.73053391e-08, 0.7143659, -3.78265845e-08, 1, 4.31646292e-08, -0.7143659, 3.18339244e-09, -0.699772358),
+    ["Amber isie"] = CFrame.new(1323.87024, 8.16194153, 201.93869, -0.598440707, 4.31914282e-09, 0.801167071, 2.45323815e-08, 1, 1.29336737e-08, -0.801167071, 2.73945737e-08, -0.598440707),
+    ["Battlefield isie"] = CFrame.new(1321.10535, 8.08194065, 205.195343, -0.653882205, -9.13330211e-08, 0.756596386, -2.61356341e-08, 1, 9.81281474e-08, -0.756596386, 4.439012e-08, -0.653882205),
+    ["Mistpeak isie"] = CFrame.new(2576.61548, 9.27561855, -35.829567, -0.00849962048, -6.35730473e-08, 0.99996388, 5.31433315e-08, 1, 6.40270557e-08, -0.99996388, 5.36856177e-08, -0.00849962048)
+}
 
 local function getFishingUI()
     local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
@@ -140,6 +153,72 @@ local function setFishCFrame()
         print("Fishing position set:", _G.FishCFrame.Position)
     end
 end
+
+local function setTeleportLocation(slot)
+    local character = getCharacter()
+    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
+    if humanoidRootPart then
+        _G.TeleportLocations[slot] = humanoidRootPart.CFrame
+        print("Saved teleport location slot " .. slot .. ":", _G.TeleportLocations[slot].Position)
+    end
+end
+
+local function teleportToLocation(slot)
+    local location = _G.TeleportLocations[slot]
+    if not location then
+        print("Teleport slot " .. slot .. " not set.")
+        return
+    end
+
+    local character = getCharacter()
+    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
+    if humanoidRootPart then
+        humanoidRootPart.CFrame = location
+        humanoidRootPart.Velocity = Vector3.new()
+        humanoidRootPart.RotVelocity = Vector3.new()
+        print("Teleported to slot " .. slot .. ".")
+    end
+end
+
+local function registerTeleportLocation(name, cframe)
+    if typeof(name) ~= "string" or name == "" then
+        warn("Teleport name must be a non-empty string.")
+        return
+    end
+
+    if typeof(cframe) ~= "CFrame" then
+        warn("Teleport cframe must be a CFrame value.")
+        return
+    end
+
+    _G.TeleportLocations[name] = cframe
+    print("Registered teleport location:", name, cframe.Position)
+end
+
+local function teleportToLocationByName(name)
+    if typeof(name) ~= "string" or name == "" then
+        warn("Teleport name must be a non-empty string.")
+        return
+    end
+
+    local location = _G.TeleportLocations[name]
+    if not location then
+        warn("Teleport location '" .. name .. "' not found.")
+        return
+    end
+
+    local character = getCharacter()
+    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
+    if humanoidRootPart then
+        humanoidRootPart.CFrame = location
+        humanoidRootPart.Velocity = Vector3.new()
+        humanoidRootPart.RotVelocity = Vector3.new()
+        print("Teleported to location:", name)
+    end
+end
+
+_G.RegisterTeleportLocation = registerTeleportLocation
+_G.TeleportToLocationByName = teleportToLocationByName
 
 local function applyFishingPositionLock()
     if not _G.AutoFish or not _G.FishCFrame then
@@ -306,7 +385,7 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/d
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
 local Window = Fluent:CreateWindow({
-    Title = "Heavyweight Fishing V.1.0.1.0",
+    Title = "Heavyweight Fishing V.1.1.1.0",
     SubTitle = "by Haru",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
@@ -318,6 +397,7 @@ local Window = Fluent:CreateWindow({
 local Tabs = {
     Main = Window:AddTab({ Title = "Auto Fish", Icon = "FishingRod" }),
     Skills = Window:AddTab({ Title = "Auto Skills", Icon = "activity" }),
+    Teleport = Window:AddTab({ Title = "Teleport", Icon = "MapPin" }),
     Character = Window:AddTab({ Title = "Character", Icon = "user" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
@@ -352,6 +432,50 @@ local SetFishPositionButton = Tabs.Main:AddButton({
     Description = "Save current position as fishing location.",
     Callback = function()
         setFishCFrame()
+    end
+})
+
+local PredefinedIslandTeleport = Tabs.Teleport:AddDropdown("PredefinedIslandTeleport", {
+    Title = "Teleport Island",
+    Description = "เลือกชื่อเกาะเพื่อ TP",
+    Values = {
+        "beginning isle",
+        "bamboo isle",
+        "Frost lsle",
+        "FallOut isls",
+        "sovereign isle",
+        "perch isle",
+        "Frost isle",
+        "cocont isie",
+        "Amber isie",
+        "Battlefield isie",
+        "Mistpeak isie"
+    },
+    Multi = false,
+    Default = 1
+})
+
+local TeleportIslandButton = Tabs.Teleport:AddButton({
+    Title = "Teleport To Selected Island",
+    Description = "ไปยังเกาะที่เลือกใน dropdown",
+    Callback = function()
+        teleportToLocationByName(Options.PredefinedIslandTeleport.Value)
+    end
+})
+
+local SaveIsPositionButton = Tabs.Teleport:AddButton({
+    Title = "Save Position",
+    Description = "Save current location for Position.",
+    Callback = function()
+        setTeleportLocation(1)
+    end
+})
+
+local TeleportPositionButton = Tabs.Teleport:AddButton({
+    Title = "TP Position ",
+    Description = "Teleport to saved Position .",
+    Callback = function()
+        teleportToLocation(1)
     end
 })
 
