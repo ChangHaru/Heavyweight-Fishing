@@ -12,6 +12,8 @@ _G.AutoX = false
 _G.AutoC = false
 _G.AutoV = false
 _G.AutoSell = false
+_G.EZautoEnzo = false
+
 _G.FishCFrame = nil
 _G.TeleportLocations = {
     
@@ -214,6 +216,62 @@ local function teleportToLocationByName(name)
         humanoidRootPart.Velocity = Vector3.new()
         humanoidRootPart.RotVelocity = Vector3.new()
         print("Teleported to location:", name)
+    end
+end
+
+local FriendTeleportDropdown
+
+local function teleportToPlayer(name)
+    if typeof(name) ~= "string" or name == "" then
+        warn("Player name must be a non-empty string.")
+        return
+    end
+
+    local targetPlayer = nil
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player.Name == name or player.DisplayName == name then
+            targetPlayer = player
+            break
+        end
+    end
+
+    if not targetPlayer then
+        warn("Player '" .. name .. "' not found.")
+        return
+    end
+
+    local character = getCharacter()
+    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
+    local targetCharacter = targetPlayer.Character
+    local targetRootPart = targetCharacter and targetCharacter:FindFirstChild("HumanoidRootPart")
+
+    if humanoidRootPart and targetRootPart then
+        humanoidRootPart.CFrame = targetRootPart.CFrame
+        humanoidRootPart.Velocity = Vector3.new()
+        humanoidRootPart.RotVelocity = Vector3.new()
+        print("Teleported to player:", name)
+    else
+        warn("Unable to teleport to player:", name)
+    end
+end
+
+local function refreshFriendDropdown()
+    local friendNames = {}
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            table.insert(friendNames, player.Name)
+        end
+    end
+    if #friendNames == 0 then
+        friendNames = {"No players available"}
+    end
+    if FriendTeleportDropdown then
+        FriendTeleportDropdown.Values = friendNames
+        if FriendTeleportDropdown.SetValue then
+            FriendTeleportDropdown:SetValue(friendNames[1])
+        elseif Options and Options.FriendTeleportDropdown then
+            Options.FriendTeleportDropdown.Value = friendNames[1]
+        end
     end
 end
 
@@ -462,6 +520,27 @@ local TeleportIslandButton = Tabs.Teleport:AddButton({
     end
 })
 
+FriendTeleportDropdown = Tabs.Teleport:AddDropdown("FriendTeleportDropdown", {
+    Title = "Friend",
+    Default = 1,
+    Values = {"Loading..."},
+    Multi = false,
+    Description = "เลือกเพื่อนเพื่อเทเลพอร์ต"
+})
+
+local TeleportFriendButton = Tabs.Teleport:AddButton({
+    Title = "Teleport To Friend",
+    Description = "Teleport to the selected player.",
+    Callback = function()
+        teleportToPlayer(Options.FriendTeleportDropdown.Value or "")
+    end
+})
+
+Players.PlayerAdded:Connect(refreshFriendDropdown)
+Players.PlayerRemoving:Connect(refreshFriendDropdown)
+
+task.spawn(refreshFriendDropdown)
+
 local SaveIsPositionButton = Tabs.Teleport:AddButton({
     Title = "Save Position",
     Description = "Save current location for Position.",
@@ -513,6 +592,52 @@ local AutoVToggle = Tabs.Skills:AddToggle("AutoVToggle", {
 
 AutoVToggle:OnChanged(function()
     _G.AutoV = Options.AutoVToggle.Value
+end)
+
+local EZAutoEnzoToggle = Tabs.Skills:AddToggle("EZAutoEnzoToggle", {
+    Title = "Auto Enzo Boss",
+    Default = false
+})
+
+local ezAutoEnzoThread = nil
+
+local function runEZAutoEnzoLoop()
+    if ezAutoEnzoThread ~= nil then
+        return
+    end
+
+    ezAutoEnzoThread = task.spawn(function()
+        while _G.EZautoEnzo do
+            local bossPhaseEvent = Events:FindFirstChild("BossPhase2Action")
+            if not bossPhaseEvent then
+                task.wait(0.5)
+            else
+                for i = 1, 1000 do
+                    if not _G.EZautoEnzo then
+                        break
+                    end
+
+                    bossPhaseEvent:FireServer({
+                        Index = i,
+                        Hit = true
+                    })
+
+                    task.wait(0.1)
+                end
+            end
+
+            task.wait(0.1)
+        end
+
+        ezAutoEnzoThread = nil
+    end)
+end
+
+EZAutoEnzoToggle:OnChanged(function()
+    _G.EZautoEnzo = Options.EZAutoEnzoToggle.Value
+    if _G.EZautoEnzo then
+        runEZAutoEnzoLoop()
+    end
 end)
 
 local CharacterTab = Tabs.Character
