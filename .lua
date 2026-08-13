@@ -5,16 +5,18 @@ local RunService = game:GetService("RunService")
 
 local LocalPlayer = Players.LocalPlayer
 local Events = ReplicatedStorage:WaitForChild("Events")
-
+--tap AutoFish
 _G.AutoFish = false
+_G.AutoSell = false
+_G.BuyBait = false
+_G.FishCFrame = nil
+--tap Autoskills
 _G.AutoZ = false
 _G.AutoX = false
 _G.AutoC = false
 _G.AutoV = false
-_G.AutoSell = false
 _G.EZautoEnzo = false
-
-_G.FishCFrame = nil
+--tapTeleport
 _G.TeleportLocations = {
     
     ["beginning isle"] = CFrame.new(-207.387665, 6.76193953, 32.3229866, 0.768884122, -5.12820471e-08, 0.639388144, 8.21569088e-08, 1, -1.85913631e-08, -0.639388144, 6.68247608e-08, 0.768884122),
@@ -28,6 +30,14 @@ _G.TeleportLocations = {
     ["Battlefield isie"] = CFrame.new(1321.10535, 8.08194065, 205.195343, -0.653882205, -9.13330211e-08, 0.756596386, -2.61356341e-08, 1, 9.81281474e-08, -0.756596386, 4.439012e-08, -0.653882205),
     ["Mistpeak isie"] = CFrame.new(2576.61548, 9.27561855, -35.829567, -0.00849962048, -6.35730473e-08, 0.99996388, 5.31433315e-08, 1, 6.40270557e-08, -0.99996388, 5.36856177e-08, -0.00849962048)
 }
+--tapCharacter
+_G.CharacterWalkSpeed = 50
+_G.CharacterJumpPower = 16
+_G.CharacterEnabled = false
+_G.AntiAFK = false
+
+
+
 
 local function getFishingUI()
     local playerGui = LocalPlayer:FindFirstChild("PlayerGui")
@@ -89,10 +99,6 @@ local function countAttachments(buoy)
     end
     return count
 end
-
-_G.CharacterWalkSpeed = 30
-_G.CharacterJumpPower = 16
-_G.CharacterEnabled = false
 
 local function getCharacter()
     return LocalPlayer and LocalPlayer.Character
@@ -311,6 +317,42 @@ local function applyCharacterSettingsOnSpawn()
     end
 end
 
+local antiAFKThread = nil
+
+local function startAntiAFK()
+    if antiAFKThread then
+        return
+    end
+
+    antiAFKThread = task.spawn(function()
+        local virtualUser = game:GetService("VirtualUser")
+
+        while _G.AntiAFK do
+            task.wait(20)
+            if not _G.AntiAFK then
+                break
+            end
+
+            local ok = pcall(function()
+                virtualUser:Button2Down(Vector2.new(0, 0), Enum.UserInputType.MouseMovement)
+                task.wait(0.1)
+                virtualUser:Button2Up(Vector2.new(0, 0), Enum.UserInputType.MouseMovement)
+            end)
+
+            if not ok then
+                warn("Anti AFK failed to send input.")
+            end
+        end
+
+        antiAFKThread = nil
+    end)
+end
+
+local function stopAntiAFK()
+    _G.AntiAFK = false
+    antiAFKThread = nil
+end
+
 LocalPlayer.CharacterAdded:Connect(function()
     task.wait(0.1)
     applyCharacterSettingsOnSpawn()
@@ -443,7 +485,7 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/d
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
 local Window = Fluent:CreateWindow({
-    Title = "Heavyweight Fishing V.1.2.1.0",
+    Title = "Heavyweight Fishing V.1.3.2.0",
     SubTitle = "by Haru",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
@@ -457,6 +499,7 @@ local Tabs = {
     Skills = Window:AddTab({ Title = "Auto Skills", Icon = "activity" }),
     Teleport = Window:AddTab({ Title = "Teleport", Icon = "MapPin" }),
     Character = Window:AddTab({ Title = "Character", Icon = "user" }),
+    Shop = Window:AddTab({ Title = "Shop", Icon = "shopping-cart" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
@@ -473,7 +516,7 @@ AutoFishToggle:OnChanged(function()
     if _G.AutoFish and _G.FishCFrame then
         applyFishingPositionLock()
     end
-end)
+end)    
 
 
 local AutoSellToggle = Tabs.Main:AddToggle("AutoSellToggle", {
@@ -490,6 +533,49 @@ local SetFishPositionButton = Tabs.Main:AddButton({
     Description = "Save current position as fishing location.",
     Callback = function()
         setFishCFrame()
+    end
+})
+
+local ChooseDialogueButton = Tabs.Main:AddButton({
+    Title = "Ticket Quest Giver",
+    Description = "Fire ChooseDialogueOption for the quest giver.",
+    Callback = function()
+        local Event = game:GetService("ReplicatedStorage"):WaitForChild("Events"):FindFirstChild("ChooseDialogueOption")
+        if not Event then
+            warn("ChooseDialogueOption event not found.")
+            return
+        end
+
+        Event:FireServer(
+            "Ticket Quest Giver",
+            1,
+            "Quest",
+            {
+                workspace.NPC.Function["Ticket Quest Giver"]
+            }
+        )
+    end
+})
+
+local ChooseHardAcceptQuestButton = Tabs.Main:AddButton({
+    Title = "Ticket Quest Hard Accept",
+    Description = "Fire the hard accept quest dialogue option.",
+    Callback = function()
+        local Event = game:GetService("ReplicatedStorage"):WaitForChild("Events"):FindFirstChild("ChooseDialogueOption")
+        if not Event then
+            warn("ChooseDialogueOption event not found.")
+            return
+        end
+
+        Event:FireServer(
+            "Ticket Quest Giver",
+            2,
+            "HardAcceptQuest",
+            {
+                workspace.NPC.Function["Ticket Quest Giver"],
+                "Ticket Quest"
+            }
+        )
     end
 })
 
@@ -640,7 +726,69 @@ EZAutoEnzoToggle:OnChanged(function()
     end
 end)
 
+local ShopTab = Tabs.Shop
+
+
+local BuyBaitToggle = ShopTab:AddToggle("BuyBaitToggle", {
+    Title = "Buy Ancestral Bait",
+    Default = false
+})
+
+local BuyBaitAmountSlider = ShopTab:AddSlider("BuyBaitAmount", {
+    Title = "Amount",
+    Min = 1,
+    Max = 100,
+    Default = 1,
+    Rounding = 1,
+    Suffix = "x"
+})
+
+local buyBaitThread = nil
+
+local function runBuyBaitLoop()
+    if buyBaitThread ~= nil then
+        return
+    end
+
+    buyBaitThread = task.spawn(function()
+        while _G.BuyBait do
+            local baitEvent = Events:FindFirstChild("BuyBait")
+            if baitEvent then
+                baitEvent:FireServer("Ancestral Bait", math.max(1, math.floor(Options.BuyBaitAmount.Value or 1)))
+            else
+                warn("BuyBait event not found.")
+                break
+            end
+
+            task.wait(0.2)
+        end
+
+        buyBaitThread = nil
+    end)
+end
+
+BuyBaitToggle:OnChanged(function()
+    _G.BuyBait = Options.BuyBaitToggle.Value
+    if _G.BuyBait then
+        runBuyBaitLoop()
+    end
+end)
+
 local CharacterTab = Tabs.Character
+
+local AntiAFKToggle = CharacterTab:AddToggle("AntiAFKToggle", {
+    Title = "Anti AFK",
+    Default = false
+})
+
+AntiAFKToggle:OnChanged(function()
+    _G.AntiAFK = Options.AntiAFKToggle.Value
+    if _G.AntiAFK then
+        startAntiAFK()
+    else
+        stopAntiAFK()
+    end
+end)
 
 local SpeedSlider = CharacterTab:AddSlider("CharacterSpeed", {
     Title = "Walk Speed",
