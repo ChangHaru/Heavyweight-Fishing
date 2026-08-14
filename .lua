@@ -227,6 +227,83 @@ end
 
 local FriendTeleportDropdown
 
+local function findEnzoBoss()
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj.Name:lower():find("enzo") then
+            return obj
+        end
+    end
+    return nil
+end
+
+local function getBossPhaseValue(boss)
+    if not boss then
+        return nil
+    end
+
+    local checked = {}
+    for _, child in ipairs(boss:GetDescendants()) do
+        local name = string.lower(child.Name)
+        if name:find("phase") or name:find("stage") or name:find("state") or name:find("boss") then
+            if child:IsA("StringValue") then
+                local value = string.lower(child.Value)
+                table.insert(checked, name .. "=" .. value)
+                if value:find("phase2") or value:find("bossphase2") or value == "2" then
+                    return value
+                end
+            elseif child:IsA("IntValue") then
+                local value = tostring(child.Value)
+                table.insert(checked, name .. "=" .. value)
+                if value == "2" then
+                    return value
+                end
+            end
+        end
+    end
+
+    if #checked > 0 then
+        print("[EnzoBoss] Boss state candidates:", table.concat(checked, ", "))
+    end
+
+    return nil
+end
+
+local function printBossDebugInfo(boss)
+    if not boss then
+        return
+    end
+
+    local names = {}
+    for _, child in ipairs(boss:GetChildren()) do
+        table.insert(names, child.Name .. " (" .. child.ClassName .. ")")
+    end
+
+    print("[EnzoBoss] Boss children:", table.concat(names, ", "))
+end
+
+local function isEnzoPhase2(boss)
+    if not boss then
+        return false
+    end
+
+    local phaseValue = getBossPhaseValue(boss)
+    if phaseValue then
+        if phaseValue:find("phase2") or phaseValue:find("bossphase2") or phaseValue == "2" then
+            return true
+        end
+    end
+
+    local humanoid = boss:FindFirstChildOfClass("Humanoid")
+    if humanoid and humanoid.MaxHealth and humanoid.MaxHealth > 0 then
+        local healthRatio = humanoid.Health / humanoid.MaxHealth
+        if healthRatio <= 0.5 then
+            return true
+        end
+    end
+
+    return false
+end
+
 local function teleportToPlayer(name)
     if typeof(name) ~= "string" or name == "" then
         warn("Player name must be a non-empty string.")
@@ -485,7 +562,7 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/d
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
 local Window = Fluent:CreateWindow({
-    Title = "Heavyweight Fishing V.1.3.2.0",
+    Title = "Heavyweight Fishing V.1.4.2.0",
     SubTitle = "by Haru",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
@@ -497,6 +574,7 @@ local Window = Fluent:CreateWindow({
 local Tabs = {
     Main = Window:AddTab({ Title = "Auto Fish", Icon = "FishingRod" }),
     Skills = Window:AddTab({ Title = "Auto Skills", Icon = "activity" }),
+    Boss = Window:AddTab({ Title = "Boss", Icon = "sword" }),
     Teleport = Window:AddTab({ Title = "Teleport", Icon = "MapPin" }),
     Character = Window:AddTab({ Title = "Character", Icon = "user" }),
     Shop = Window:AddTab({ Title = "Shop", Icon = "shopping-cart" }),
@@ -535,6 +613,8 @@ local SetFishPositionButton = Tabs.Main:AddButton({
         setFishCFrame()
     end
 })
+
+local BossTab = Tabs.Boss
 
 local ChooseDialogueButton = Tabs.Main:AddButton({
     Title = "Ticket Quest Giver",
@@ -680,52 +760,6 @@ AutoVToggle:OnChanged(function()
     _G.AutoV = Options.AutoVToggle.Value
 end)
 
-local EZAutoEnzoToggle = Tabs.Skills:AddToggle("EZAutoEnzoToggle", {
-    Title = "Auto Enzo Boss",
-    Default = false
-})
-
-local ezAutoEnzoThread = nil
-
-local function runEZAutoEnzoLoop()
-    if ezAutoEnzoThread ~= nil then
-        return
-    end
-
-    ezAutoEnzoThread = task.spawn(function()
-        while _G.EZautoEnzo do
-            local bossPhaseEvent = Events:FindFirstChild("BossPhase2Action")
-            if not bossPhaseEvent then
-                task.wait(0.5)
-            else
-                for i = 1, 1000 do
-                    if not _G.EZautoEnzo then
-                        break
-                    end
-
-                    bossPhaseEvent:FireServer({
-                        Index = i,
-                        Hit = true
-                    })
-
-                    task.wait(0.1)
-                end
-            end
-
-            task.wait(0.1)
-        end
-
-        ezAutoEnzoThread = nil
-    end)
-end
-
-EZAutoEnzoToggle:OnChanged(function()
-    _G.EZautoEnzo = Options.EZAutoEnzoToggle.Value
-    if _G.EZautoEnzo then
-        runEZAutoEnzoLoop()
-    end
-end)
-
 local ShopTab = Tabs.Shop
 
 
@@ -771,6 +805,66 @@ BuyBaitToggle:OnChanged(function()
     _G.BuyBait = Options.BuyBaitToggle.Value
     if _G.BuyBait then
         runBuyBaitLoop()
+    end
+end)
+
+local EZAutoEnzoToggle = BossTab:AddToggle("EZAutoEnzoToggle", {
+    Title = "Auto Enzo Boss",
+    Default = false
+})
+
+local ezAutoEnzoThread = nil
+
+local function runEZAutoEnzoLoop()
+    if ezAutoEnzoThread ~= nil then
+        return
+    end
+
+    print("[EnzoBoss] Auto loop started")
+    ezAutoEnzoThread = task.spawn(function()
+        local bossPhaseEvent = Events:FindFirstChild("BossPhase2Action")
+        if not bossPhaseEvent then
+            warn("[EnzoBoss] BossPhase2Action event not found.")
+            ezAutoEnzoThread = nil
+            return
+        end
+
+        local index = 1
+        while _G.EZautoEnzo do
+            local boss = findEnzoBoss()
+            if not boss then
+                print("[EnzoBoss] Waiting for Enzo boss to spawn...")
+                task.wait(0.5)
+            else
+                bossPhaseEvent:FireServer({
+                    Index = index,
+                    Hit = true
+                })
+
+                index = index + 1
+                task.wait(0.2)
+            end
+        end
+
+        print("[EnzoBoss] Auto loop stopped")
+        ezAutoEnzoThread = nil
+    end)
+end
+
+EZAutoEnzoToggle:OnChanged(function()
+    _G.EZautoEnzo = Options.EZAutoEnzoToggle.Value
+
+    if _G.EZautoEnzo then
+        print("[EnzoBoss] Toggle enabled. Starting Enzo fight.")
+        local startBossEvent = Events:FindFirstChild("StartBossFight")
+        if startBossEvent then
+            startBossEvent:FireServer("Enzo", "Nightmare")
+        else
+            warn("[EnzoBoss] StartBossFight event not found.")
+        end
+        runEZAutoEnzoLoop()
+    else
+        print("[EnzoBoss] Toggle disabled.")
     end
 end)
 
