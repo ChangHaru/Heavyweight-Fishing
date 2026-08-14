@@ -9,13 +9,14 @@ local Events = ReplicatedStorage:WaitForChild("Events")
 _G.AutoFish = false
 _G.AutoSell = false
 _G.BuyBait = false
-_G.FishCFrame = nil
+_G.FishCFrame = CFrame.new(1321.10535, 8.08194065, 205.195343, -0.653882205, -9.13330211e-08, 0.756596386, -2.61356323e-08, 1, 9.81281474e-08, -0.756596386, 4.439012e-08, -0.653882205)
 --tap Autoskills
 _G.AutoZ = false
 _G.AutoX = false
 _G.AutoC = false
 _G.AutoV = false
 _G.EZautoEnzo = false
+_G.ClaimAllQuest = false
 --tapTeleport
 _G.TeleportLocations = {
     
@@ -396,6 +397,35 @@ end
 
 local antiAFKThread = nil
 
+local function triggerAntiAFKJump()
+    local character = LocalPlayer.Character
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+    local rootPart = character and character:FindFirstChild("HumanoidRootPart")
+
+    if not humanoid or humanoid.Health <= 0 then
+        return false
+    end
+
+    if humanoid:GetState() == Enum.HumanoidStateType.Dead then
+        return false
+    end
+
+    local ok = pcall(function()
+        if rootPart then
+            rootPart.CFrame = rootPart.CFrame + rootPart.CFrame.LookVector * 1.5
+        end
+
+        humanoid.Jump = true
+        task.wait(0.08)
+
+        if humanoid:GetState() ~= Enum.HumanoidStateType.Jumping then
+            humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end
+    end)
+
+    return ok
+end
+
 local function startAntiAFK()
     if antiAFKThread then
         return
@@ -408,16 +438,9 @@ local function startAntiAFK()
                 break
             end
 
-            local character = LocalPlayer.Character
-            local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-            if humanoid and humanoid.Health > 0 and humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
-                local ok = pcall(function()
-                    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-                end)
-
-                if not ok then
-                    warn("Anti AFK jump failed.")
-                end
+            local success = triggerAntiAFKJump()
+            if not success then
+                warn("Anti AFK jump failed.")
             end
         end
 
@@ -575,6 +598,7 @@ local Tabs = {
     Main = Window:AddTab({ Title = "Auto Fish", Icon = "FishingRod" }),
     Skills = Window:AddTab({ Title = "Auto Skills", Icon = "activity" }),
     Boss = Window:AddTab({ Title = "Boss", Icon = "sword" }),
+    Quest = Window:AddTab({ Title = "Quest", Icon = "clipboard-check" }),
     Teleport = Window:AddTab({ Title = "Teleport", Icon = "MapPin" }),
     Character = Window:AddTab({ Title = "Character", Icon = "user" }),
     Shop = Window:AddTab({ Title = "Shop", Icon = "shopping-cart" }),
@@ -615,8 +639,52 @@ local SetFishPositionButton = Tabs.Main:AddButton({
 })
 
 local BossTab = Tabs.Boss
+local QuestTab = Tabs.Quest
 
-local ChooseDialogueButton = Tabs.Main:AddButton({
+local claimAllQuestThread = nil
+
+local function runClaimAllQuestLoop()
+    if claimAllQuestThread ~= nil then
+        return
+    end
+
+    claimAllQuestThread = task.spawn(function()
+        local claimEvent = Events:FindFirstChild("ClaimQuest")
+        while _G.ClaimAllQuest do
+            if claimEvent then
+                for slotId = 1, 4 do
+                    if not _G.ClaimAllQuest then
+                        break
+                    end
+
+                    claimEvent:FireServer(tostring(slotId))
+                    task.wait(0.1)
+                end
+            else
+                warn("ClaimQuest event not found.")
+                break
+            end
+
+            task.wait(0.1)
+        end
+
+        claimAllQuestThread = nil
+    end)
+end
+
+local ClaimAllQuestToggle = QuestTab:AddToggle("ClaimAllQuestToggle", {
+    Title = "Daliy Quest",
+    Default = false
+})
+
+ClaimAllQuestToggle:OnChanged(function()
+    _G.ClaimAllQuest = Options.ClaimAllQuestToggle.Value
+    if _G.ClaimAllQuest then
+        runClaimAllQuestLoop()
+    end
+end)
+
+local ChooseDialogueButton = QuestTab:AddButton({
     Title = "Ticket Quest Giver",
     Description = "Fire ChooseDialogueOption for the quest giver.",
     Callback = function()
@@ -637,7 +705,7 @@ local ChooseDialogueButton = Tabs.Main:AddButton({
     end
 })
 
-local ChooseHardAcceptQuestButton = Tabs.Main:AddButton({
+local ChooseHardAcceptQuestButton = QuestTab:AddButton({
     Title = "Ticket Quest Hard Accept",
     Description = "Fire the hard accept quest dialogue option.",
     Callback = function()
@@ -762,9 +830,29 @@ end)
 
 local ShopTab = Tabs.Shop
 
+local BaitValues = {
+    "Basic Bait",
+    "Crude Mash Bait",
+    "Corrupted Essence Bait",
+    "Elite Bait",
+    "Ancestral Bait"
+}
+
+local BaitDefault = {}
+for _, baitName in ipairs(BaitValues) do
+    BaitDefault[baitName] = true
+end
+
+local BaitDropdown = ShopTab:AddDropdown("BaitDropdown", {
+    Title = "Bait Select",
+    Description = "เลือก bait ที่ต้องการซื้อ",
+    Values = BaitValues,
+    Multi = true,
+    Default = BaitDefault
+})
 
 local BuyBaitToggle = ShopTab:AddToggle("BuyBaitToggle", {
-    Title = "Buy Ancestral Bait",
+    Title = "Buy Selected Bait",
     Default = false
 })
 
@@ -787,11 +875,35 @@ local function runBuyBaitLoop()
     buyBaitThread = task.spawn(function()
         while _G.BuyBait do
             local baitEvent = Events:FindFirstChild("BuyBait")
-            if baitEvent then
-                baitEvent:FireServer("Ancestral Bait", math.max(1, math.floor(Options.BuyBaitAmount.Value or 1)))
-            else
+            if not baitEvent then
                 warn("BuyBait event not found.")
                 break
+            end
+
+            local selectedMap = Options.BaitDropdown.Value or BaitDefault
+            local selectedBaits = {}
+
+            if type(selectedMap) == "table" then
+                for baitName, enabled in pairs(selectedMap) do
+                    if enabled == true then
+                        table.insert(selectedBaits, baitName)
+                    end
+                end
+            elseif type(selectedMap) == "string" then
+                selectedBaits = {selectedMap}
+            end
+
+            if #selectedBaits == 0 then
+                selectedBaits = BaitValues
+            end
+
+            for _, baitName in ipairs(selectedBaits) do
+                if not _G.BuyBait then
+                    break
+                end
+
+                baitEvent:FireServer(baitName, math.max(1, math.floor(Options.BuyBaitAmount.Value or 1)))
+                task.wait(0.1)
             end
 
             task.wait(0.2)
@@ -931,7 +1043,7 @@ local ResetCharacterButton = CharacterTab:AddButton({
     Title = "Reset Character Stats",
     Description = "Reset speed and jump to default values",
     Callback = function()
-        _G.CharacterWalkSpeed = 16
+        _G.CharacterWalkSpeed = 50
         _G.CharacterJumpPower = 16
         SpeedSlider:SetValue(_G.CharacterWalkSpeed)
         JumpSlider:SetValue(_G.CharacterJumpPower)
@@ -945,12 +1057,27 @@ local SkillIntervalSlider = Tabs.Skills:AddSlider("SkillInterval", {
     Title = "Delay(s)",
     Min = 0.1,
     Max = 5,
-    Default = 1,
+    Default = 0.1,
     Rounding = 1,
     Suffix = "s"
 })
 
 -- Auto Skills Coroutine (starts after UI is created)
+local function claimDailyRewards()
+    local dailyRewardEvent = Events:FindFirstChild("DailyReward")
+    if not dailyRewardEvent then
+        warn("DailyReward event not found.")
+        return
+    end
+
+    for rewardId = 1, 7 do
+        dailyRewardEvent:FireServer(rewardId)
+        task.wait(0.1)
+    end
+end
+
+task.spawn(claimDailyRewards)
+
 local autoSkillsCoroutine = coroutine.create(function()
     while true do
         local skillInterval = Options.SkillInterval.Value or 1
