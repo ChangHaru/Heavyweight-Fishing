@@ -402,22 +402,22 @@ local function startAntiAFK()
     end
 
     antiAFKThread = task.spawn(function()
-        local virtualUser = game:GetService("VirtualUser")
-
         while _G.AntiAFK do
-            task.wait(20)
+            task.wait(10)
             if not _G.AntiAFK then
                 break
             end
 
-            local ok = pcall(function()
-                virtualUser:Button2Down(Vector2.new(0, 0), Enum.UserInputType.MouseMovement)
-                task.wait(0.1)
-                virtualUser:Button2Up(Vector2.new(0, 0), Enum.UserInputType.MouseMovement)
-            end)
+            local character = LocalPlayer.Character
+            local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+            if humanoid and humanoid.Health > 0 and humanoid:GetState() ~= Enum.HumanoidStateType.Dead then
+                local ok = pcall(function()
+                    humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+                end)
 
-            if not ok then
-                warn("Anti AFK failed to send input.")
+                if not ok then
+                    warn("Anti AFK jump failed.")
+                end
             end
         end
 
