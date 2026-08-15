@@ -585,7 +585,7 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/d
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
 local Window = Fluent:CreateWindow({
-    Title = "Heavyweight Fishing V.1.4.2.1",
+    Title = "Heavyweight Fishing V.1.5.2.1",
     SubTitle = "by Haru",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
@@ -863,6 +863,65 @@ local BuyBaitAmountSlider = ShopTab:AddSlider("BuyBaitAmount", {
     Default = 1,
     Rounding = 1,
     Suffix = "x"
+})
+
+local CraftBaitButton = ShopTab:AddButton({
+    Title = "Craft Bait",
+    Description = "Fire the buy bait craft dialogue event.",
+    Callback = function()
+        local Event = game:GetService("ReplicatedStorage"):WaitForChild("Events"):FindFirstChild("ChooseDialogueOption")
+        if not Event then
+            warn("ChooseDialogueOption event not found.")
+            return
+        end
+
+        Event:FireServer(
+            "BuyBait",
+            2,
+            "CraftBait",
+            nil
+        )
+    end
+})
+
+local CraftRodButton = ShopTab:AddButton({
+    Title = "Craft Rod",
+    Description = "Fire the buy fishing rod craft dialogue event.",
+    Callback = function()
+        local Event = game:GetService("ReplicatedStorage"):WaitForChild("Events"):FindFirstChild("ChooseDialogueOption")
+        if not Event then
+            warn("ChooseDialogueOption event not found.")
+            return
+        end
+
+        Event:FireServer(
+            "BuyFishingRod",
+            2,
+            "CraftRod",
+            nil
+        )
+    end
+})
+
+local ShadowUpgradeButton = ShopTab:AddButton({
+    Title = "Open Shadow UPG",
+    Description = "Fire the Shadow character upgrade dialogue event.",
+    Callback = function()
+        local Event = game:GetService("ReplicatedStorage"):WaitForChild("Events"):FindFirstChild("ChooseDialogueOption")
+        if not Event then
+            warn("ChooseDialogueOption event not found.")
+            return
+        end
+
+        Event:FireServer(
+            "The Shadow",
+            1,
+            "OpenUPGChar",
+            {
+                workspace.NPC.Function["The Shadow"]
+            }
+        )
+    end
 })
 
 local buyBaitThread = nil
