@@ -585,7 +585,7 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/d
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
 local Window = Fluent:CreateWindow({
-    Title = "Heavyweight Fishing V.1.4.2.0",
+    Title = "Heavyweight Fishing V.1.4.2.1",
     SubTitle = "by Haru",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
@@ -941,6 +941,7 @@ local function runEZAutoEnzoLoop()
             return
         end
 
+        local pacing = {0.5, 0.6, 0.7, 1, 0.8, 0.9}
         local index = 1
         while _G.EZautoEnzo do
             local boss = findEnzoBoss()
@@ -948,13 +949,14 @@ local function runEZAutoEnzoLoop()
                 print("[EnzoBoss] Waiting for Enzo boss to spawn...")
                 task.wait(0.5)
             else
+                local delay = pacing[((index - 1) % #pacing) + 1]
                 bossPhaseEvent:FireServer({
                     Index = index,
                     Hit = true
                 })
 
                 index = index + 1
-                task.wait(0.2)
+                task.wait(delay)
             end
         end
 
