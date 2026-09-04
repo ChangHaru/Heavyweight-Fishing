@@ -1,4 +1,4 @@
-
+wait(5)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -9,13 +9,17 @@ local Events = ReplicatedStorage:WaitForChild("Events")
 _G.AutoFish = false
 _G.AutoSell = false
 _G.BuyBait = false
+_G.AutoEquipBait = true
 _G.FishCFrame = CFrame.new(1321.10535, 8.08194065, 205.195343, -0.653882205, -9.13330211e-08, 0.756596386, -2.61356323e-08, 1, 9.81281474e-08, -0.756596386, 4.439012e-08, -0.653882205)
 --tap Autoskills
 _G.AutoZ = false
 _G.AutoX = false
 _G.AutoC = false
 _G.AutoV = false
+--tap Boss
+_G.AutOtoparasite = false
 _G.EZautoEnzo = false
+--tapQuest
 _G.ClaimAllQuest = false
 --tapTeleport
 _G.TeleportLocations = {
@@ -585,7 +589,7 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/d
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
 local Window = Fluent:CreateWindow({
-    Title = "Heavyweight Fishing V.1.5.2.1",
+    Title = "Heavyweight Fishing V.1.6.0.0",
     SubTitle = "by Haru",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
@@ -597,7 +601,7 @@ local Window = Fluent:CreateWindow({
 local Tabs = {
     Main = Window:AddTab({ Title = "Auto Fish", Icon = "FishingRod" }),
     Skills = Window:AddTab({ Title = "Auto Skills", Icon = "activity" }),
-    Boss = Window:AddTab({ Title = "Boss", Icon = "sword" }),
+    Boss = Window:AddTab({ Title = "Haru钓法  ", Icon = "sword" }), --boss
     Quest = Window:AddTab({ Title = "Quest", Icon = "clipboard-check" }),
     Teleport = Window:AddTab({ Title = "Teleport", Icon = "MapPin" }),
     Character = Window:AddTab({ Title = "Character", Icon = "user" }),
@@ -640,6 +644,32 @@ local SetFishPositionButton = Tabs.Main:AddButton({
 
 local BossTab = Tabs.Boss
 local QuestTab = Tabs.Quest
+
+
+
+local autoParasiteThread = nil
+
+local function runAutoParasiteLoop()
+    if autoParasiteThread ~= nil then
+        return
+    end
+
+    autoParasiteThread = task.spawn(function()
+        while _G.AutOtoparasite do
+            local rhythmEvent = Events:FindFirstChild("RhythmHit")
+            if not rhythmEvent then
+                warn("RhythmHit event not found.")
+                break
+            end
+
+            rhythmEvent:FireServer("hit")
+            task.wait(0.2)
+        end
+
+        autoParasiteThread = nil
+    end)
+end
+
 
 local claimAllQuestThread = nil
 
@@ -709,6 +739,7 @@ local ChooseHardAcceptQuestButton = QuestTab:AddButton({
     Title = "Ticket Quest Hard Accept",
     Description = "Fire the hard accept quest dialogue option.",
     Callback = function()
+
         local Event = game:GetService("ReplicatedStorage"):WaitForChild("Events"):FindFirstChild("ChooseDialogueOption")
         if not Event then
             warn("ChooseDialogueOption event not found.")
@@ -724,8 +755,69 @@ local ChooseHardAcceptQuestButton = QuestTab:AddButton({
                 "Ticket Quest"
             }
         )
+        wait(10)
     end
 })
+
+local autoTicketQuestThread = nil
+
+local function runAutoTicketQuestLoop()
+    if autoTicketQuestThread ~= nil then
+        return
+    end
+
+    autoTicketQuestThread = task.spawn(function()
+        while _G.AutoTicketQuest do
+            local dialogueEvent = Events:FindFirstChild("ChooseDialogueOption")
+            local questGiver = workspace.NPC.Function:FindFirstChild("Ticket Quest Giver")
+
+            if not dialogueEvent then
+                warn("ChooseDialogueOption event not found.")
+                break
+            end
+
+            if not questGiver then
+                warn("Ticket Quest Giver not found.")
+                task.wait(1)
+            else
+                dialogueEvent:FireServer(
+                    "Ticket Quest Giver",
+                    1,
+                    "Quest",
+                    {questGiver}
+                )
+                task.wait(0.5)
+
+                if not _G.AutoTicketQuest then
+                    break
+                end
+
+                dialogueEvent:FireServer(
+                    "Ticket Quest Giver",
+                    2,
+                    "HardAcceptQuest",
+                    {questGiver, "Ticket Quest"}
+                )
+                task.wait(5)
+            end
+        end
+
+        autoTicketQuestThread = nil
+    end)
+end
+
+local AutoTicketQuestToggle = QuestTab:AddToggle("AutoTicketQuestToggle", {
+    Title = "Auto Ticket Quest",
+    Description = "Automatically accept the Ticket Quest.",
+    Default = false
+})
+
+AutoTicketQuestToggle:OnChanged(function()
+    _G.AutoTicketQuest = Options.AutoTicketQuestToggle.Value
+    if _G.AutoTicketQuest then
+        runAutoTicketQuestLoop()
+    end
+end)
 
 local PredefinedIslandTeleport = Tabs.Teleport:AddDropdown("PredefinedIslandTeleport", {
     Title = "Teleport Island",
@@ -851,6 +943,64 @@ local BaitDropdown = ShopTab:AddDropdown("BaitDropdown", {
     Default = BaitDefault
 })
 
+local EquipAncestralBaitButton = ShopTab:AddButton({
+    Title = "Equip Ancestral Bait",
+    Description = "Equip Ancestral Bait from your inventory.",
+    Callback = function()
+        local baitEvent = Events:FindFirstChild("EquipBait")
+        if not baitEvent then
+            warn("EquipBait event not found.")
+            return
+        end
+
+        baitEvent:InvokeServer("Ancestral Bait")
+    end
+})
+
+local AutoEquipBaitToggle = ShopTab:AddToggle("AutoEquipBaitToggle", {
+    Title = "Auto Equip Ancestral Bait",
+    Description = "Automatically equip Ancestral Bait.",
+    Default = true
+})
+
+local autoEquipBaitThread = nil
+
+local function runAutoEquipBaitLoop()
+    if autoEquipBaitThread ~= nil then
+        return
+    end
+
+    autoEquipBaitThread = task.spawn(function()
+        while _G.AutoEquipBait do
+            local baitEvent = Events:FindFirstChild("EquipBait")
+            if not baitEvent then
+                warn("EquipBait event not found.")
+                break
+            end
+
+            local success, errorMessage = pcall(function()
+                baitEvent:InvokeServer("Ancestral Bait")
+            end)
+            if not success then
+                warn("Failed to equip Ancestral Bait: " .. tostring(errorMessage))
+            end
+
+            task.wait()
+        end
+
+        autoEquipBaitThread = nil
+    end)
+end
+
+AutoEquipBaitToggle:OnChanged(function()
+    _G.AutoEquipBait = Options.AutoEquipBaitToggle.Value
+    if _G.AutoEquipBait then
+        runAutoEquipBaitLoop()
+    end
+end)
+
+runAutoEquipBaitLoop()
+
 local BuyBaitToggle = ShopTab:AddToggle("BuyBaitToggle", {
     Title = "Buy Selected Bait",
     Default = false
@@ -965,7 +1115,7 @@ local function runBuyBaitLoop()
                 task.wait(0.1)
             end
 
-            task.wait(0.2)
+            task.wait(10)
         end
 
         buyBaitThread = nil
@@ -980,7 +1130,7 @@ BuyBaitToggle:OnChanged(function()
 end)
 
 local EZAutoEnzoToggle = BossTab:AddToggle("EZAutoEnzoToggle", {
-    Title = "Auto Enzo Boss",
+    Title = "第一钓 : 戮佐钓",--Auto Enzo Boss
     Default = false
 })
 
@@ -1040,6 +1190,20 @@ EZAutoEnzoToggle:OnChanged(function()
         print("[EnzoBoss] Toggle disabled.")
     end
 end)
+
+local AutoParasiteToggle = BossTab:AddToggle("AutoParasiteToggle", {
+    Title = "第二钓 : 八仙斩(专门对付八爪鱼)",
+    Description = "",
+    Default = false
+})
+
+AutoParasiteToggle:OnChanged(function()
+    _G.AutOtoparasite = Options.AutoParasiteToggle.Value
+    if _G.AutOtoparasite then
+        runAutoParasiteLoop()
+    end
+end)
+
 
 local CharacterTab = Tabs.Character
 
