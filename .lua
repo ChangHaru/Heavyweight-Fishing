@@ -10,12 +10,14 @@ _G.AutoFish = false
 _G.AutoSell = false
 _G.BuyBait = false
 _G.AutoEquipBait = true
-_G.FishCFrame = CFrame.new(-2362.24561, 7.6426816, -285.750916, -0.291235417, -1.04014873e-07, -0.95665139, -1.07269827e-07, 1, -7.60717001e-08, 0.95665139, 8.04650568e-08, -0.291235417)
+_G.FishCFrame = CFrame.new(1321.10535, 8.08194065, 205.195343, -0.653882205, -9.13330211e-08, 0.756596386, -2.61356323e-08, 1, 9.81281474e-08, -0.756596386, 4.439012e-08, -0.653882205)
 --tap Autoskills
 _G.AutoZ = false
 _G.AutoX = false
 _G.AutoC = false
 _G.AutoV = false
+_G.AutoR = false
+_G.AutoT = false
 --tap Boss
 _G.AutOtoparasite = false
 _G.EZautoEnzo = false
@@ -232,6 +234,24 @@ local function teleportToLocationByName(name)
 end
 
 local FriendTeleportDropdown
+
+local function getNPCFunction(name)
+    if typeof(name) ~= "string" or name == "" then
+        return nil
+    end
+
+    local npcFolder = workspace:FindFirstChild("NPC")
+    if not npcFolder then
+        return nil
+    end
+
+    local functionFolder = npcFolder:FindFirstChild("Function")
+    if not functionFolder then
+        return nil
+    end
+
+    return functionFolder:FindFirstChild(name)
+end
 
 local function findEnzoBoss()
     for _, obj in ipairs(workspace:GetDescendants()) do
@@ -593,7 +613,7 @@ local Window = Fluent:CreateWindow({
     Title = "Heavyweight Fishing V.1.6.0.1",
     SubTitle = "by Haru",
     TabWidth = 160,
-    Size = UDim2.fromOffset(580, 460),
+    Size = UDim2.fromOffset(750, 500),
     Acrylic = true,
     Theme = "Darker",
     MinimizeKey = Enum.KeyCode.LeftControl
@@ -725,13 +745,17 @@ local ChooseDialogueButton = QuestTab:AddButton({
             return
         end
 
+        local questGiver = getNPCFunction("Ticket Quest Giver")
+        if not questGiver then
+            warn("Ticket Quest Giver NPC not found.")
+            return
+        end
+
         Event:FireServer(
             "Ticket Quest Giver",
             1,
             "Quest",
-            {
-                workspace.NPC.Function["Ticket Quest Giver"]
-            }
+            { questGiver }
         )
     end
 })
@@ -747,14 +771,17 @@ local ChooseHardAcceptQuestButton = QuestTab:AddButton({
             return
         end
 
+        local questGiver = getNPCFunction("Ticket Quest Giver")
+        if not questGiver then
+            warn("Ticket Quest Giver NPC not found.")
+            return
+        end
+
         Event:FireServer(
             "Ticket Quest Giver",
             2,
             "HardAcceptQuest",
-            {
-                workspace.NPC.Function["Ticket Quest Giver"],
-                "Ticket Quest"
-            }
+            { questGiver, "Ticket Quest" }
         )
         wait(10)
     end
@@ -770,7 +797,7 @@ local function runAutoTicketQuestLoop()
     autoTicketQuestThread = task.spawn(function()
         while _G.AutoTicketQuest do
             local dialogueEvent = Events:FindFirstChild("ChooseDialogueOption")
-            local questGiver = workspace.NPC.Function:FindFirstChild("Ticket Quest Giver")
+            local questGiver = getNPCFunction("Ticket Quest Giver")
 
             if not dialogueEvent then
                 warn("ChooseDialogueOption event not found.")
@@ -785,7 +812,7 @@ local function runAutoTicketQuestLoop()
                     "Ticket Quest Giver",
                     1,
                     "Quest",
-                    {questGiver}
+                    { questGiver }
                 )
                 task.wait(0.5)
 
@@ -797,7 +824,7 @@ local function runAutoTicketQuestLoop()
                     "Ticket Quest Giver",
                     2,
                     "HardAcceptQuest",
-                    {questGiver, "Ticket Quest"}
+                    { questGiver, "Ticket Quest" }
                 )
                 task.wait(5)
             end
@@ -833,7 +860,8 @@ local PredefinedIslandTeleport = Tabs.Teleport:AddDropdown("PredefinedIslandTele
         "cocont isie",
         "Amber isie",
         "Battlefield isie",
-        "Mistpeak isie"
+        "Mistpeak isie",
+        "World Angler isie"
     },
     Multi = false,
     Default = 1
@@ -919,6 +947,24 @@ local AutoVToggle = Tabs.Skills:AddToggle("AutoVToggle", {
 
 AutoVToggle:OnChanged(function()
     _G.AutoV = Options.AutoVToggle.Value
+end)
+
+local AutoRToggle = Tabs.Skills:AddToggle("AutoRToggle", {
+    Title = "Auto R (Skill 5)",
+    Default = false
+})
+
+AutoRToggle:OnChanged(function()
+    _G.AutoR = Options.AutoRToggle.Value
+end)
+
+local AutoTToggle = Tabs.Skills:AddToggle("AutoTToggle", {
+    Title = "Auto T (Skill 6)",
+    Default = false
+})
+
+AutoTToggle:OnChanged(function()
+    _G.AutoT = Options.AutoTToggle.Value
 end)
 
 local ShopTab = Tabs.Shop
@@ -1064,13 +1110,17 @@ local ShadowUpgradeButton = ShopTab:AddButton({
             return
         end
 
+        local shadowNpc = getNPCFunction("The Shadow")
+        if not shadowNpc then
+            warn("The Shadow NPC not found.")
+            return
+        end
+
         Event:FireServer(
             "The Shadow",
             1,
             "OpenUPGChar",
-            {
-                workspace.NPC.Function["The Shadow"]
-            }
+            { shadowNpc }
         )
     end
 })
@@ -1090,7 +1140,7 @@ local function runBuyBaitLoop()
                 break
             end
 
-            local selectedMap = Options.BaitDropdown.Value or BaitDefault
+            local selectedMap = (Options and Options.BaitDropdown and Options.BaitDropdown.Value) or BaitDefault
             local selectedBaits = {}
 
             if type(selectedMap) == "table" then
@@ -1100,19 +1150,20 @@ local function runBuyBaitLoop()
                     end
                 end
             elseif type(selectedMap) == "string" then
-                selectedBaits = {selectedMap}
+                selectedBaits = { selectedMap }
             end
 
             if #selectedBaits == 0 then
                 selectedBaits = BaitValues
             end
 
+            local buyAmount = (Options and Options.BuyBaitAmount and Options.BuyBaitAmount.Value) or 1
             for _, baitName in ipairs(selectedBaits) do
                 if not _G.BuyBait then
                     break
                 end
 
-                baitEvent:FireServer(baitName, math.max(1, math.floor(Options.BuyBaitAmount.Value or 1)))
+                baitEvent:FireServer(baitName, math.max(1, math.floor(buyAmount)))
                 task.wait(0.1)
             end
 
@@ -1151,7 +1202,7 @@ local function runEZAutoEnzoLoop()
             return
         end
 
-        local pacing = {0.5, 0.6, 0.7, 1, 0.8, 0.9}
+        local pacing = {0.5, 0.6, 0.7, 0.8, 0.9}
         local index = 1
         while _G.EZautoEnzo do
             local boss = findEnzoBoss()
@@ -1308,35 +1359,49 @@ local autoSkillsCoroutine = coroutine.create(function()
     while true do
         local skillInterval = Options.SkillInterval.Value or 1
         
-        if _G.AutoZ or _G.AutoX or _G.AutoC or _G.AutoV then
+        if _G.AutoZ or _G.AutoX or _G.AutoC or _G.AutoV or _G.AutoR or _G.AutoT then
             if _G.AutoZ then
                 local useSkillEvent = Events:FindFirstChild("UseSkill")
                 if useSkillEvent then
                     useSkillEvent:FireServer("Z")
                 end
             end
-            task.wait(skillInterval / 4)
+            task.wait(skillInterval / 6)
             if _G.AutoX then
                 local useSkillEvent = Events:FindFirstChild("UseSkill")
                 if useSkillEvent then
                     useSkillEvent:FireServer("X")
                 end
             end
-            task.wait(skillInterval / 4)
+            task.wait(skillInterval / 6)
             if _G.AutoC then
                 local useSkillEvent = Events:FindFirstChild("UseSkill")
                 if useSkillEvent then
                     useSkillEvent:FireServer("C")
                 end
             end
-            task.wait(skillInterval / 4)
+            task.wait(skillInterval / 6)
             if _G.AutoV then
                 local useSkillEvent = Events:FindFirstChild("UseSkill")
                 if useSkillEvent then
                     useSkillEvent:FireServer("V")
                 end
             end
-            task.wait(skillInterval / 4)
+            task.wait(skillInterval / 6)
+            if _G.AutoR then
+                local useSkillEvent = Events:FindFirstChild("UseSkill")
+                if useSkillEvent then
+                    useSkillEvent:FireServer("R")
+                end
+            end
+            task.wait(skillInterval / 6)
+            if _G.AutoT then
+                local useSkillEvent = Events:FindFirstChild("UseSkill")
+                if useSkillEvent then
+                    useSkillEvent:FireServer("T")
+                end
+            end
+            task.wait(skillInterval / 6)
         else
             task.wait(0.1)
         end
