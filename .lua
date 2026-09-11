@@ -10,7 +10,7 @@ _G.AutoFish = false
 _G.AutoSell = false
 _G.BuyBait = false
 _G.AutoEquipBait = true
-_G.FishCFrame = CFrame.new(1321.10535, 8.08194065, 205.195343, -0.653882205, -9.13330211e-08, 0.756596386, -2.61356323e-08, 1, 9.81281474e-08, -0.756596386, 4.439012e-08, -0.653882205)
+_G.FishCFrame = CFrame.new(-2362.24561, 7.6426816, -285.750916, -0.291235417, -1.04014873e-07, -0.95665139, -1.07269827e-07, 1, -7.60717001e-08, 0.95665139, 8.04650568e-08, -0.291235417)
 --tap Autoskills
 _G.AutoZ = false
 _G.AutoX = false
@@ -33,7 +33,8 @@ _G.TeleportLocations = {
     ["cocont isie"] = CFrame.new(1369.427, 9.27561855, -1454.18469, -0.699772358, -5.73053391e-08, 0.7143659, -3.78265845e-08, 1, 4.31646292e-08, -0.7143659, 3.18339244e-09, -0.699772358),
     ["Amber isie"] = CFrame.new(1246.97705, 6.76193905, 1392.34106, -0.0267343521, -3.50038754e-08, 0.999642551, -1.19177856e-09, 1, 3.49845202e-08, -0.999642551, -2.5606417e-10, -0.0267343521),
     ["Battlefield isie"] = CFrame.new(1321.10535, 8.08194065, 205.195343, -0.653882205, -9.13330211e-08, 0.756596386, -2.61356341e-08, 1, 9.81281474e-08, -0.756596386, 4.439012e-08, -0.653882205),
-    ["Mistpeak isie"] = CFrame.new(2576.61548, 9.27561855, -35.829567, -0.00849962048, -6.35730473e-08, 0.99996388, 5.31433315e-08, 1, 6.40270557e-08, -0.99996388, 5.36856177e-08, -0.00849962048)
+    ["Mistpeak isie"] = CFrame.new(2576.61548, 9.27561855, -35.829567, -0.00849962048, -6.35730473e-08, 0.99996388, 5.31433315e-08, 1, 6.40270557e-08, -0.99996388, 5.36856177e-08, -0.00849962048),
+    ["World Angler isie"] = CFrame.new(-2362.24561, 7.6426816, -285.750916, -0.291235417, -1.04014873e-07, -0.95665139, -1.07269827e-07, 1, -7.60717001e-08, 0.95665139, 8.04650568e-08, -0.291235417)
 }
 --tapCharacter
 _G.CharacterWalkSpeed = 50
@@ -589,7 +590,7 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/d
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
 local Window = Fluent:CreateWindow({
-    Title = "Heavyweight Fishing V.1.6.0.0",
+    Title = "Heavyweight Fishing V.1.6.0.1",
     SubTitle = "by Haru",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
