@@ -10,7 +10,7 @@ _G.AutoFish = false
 _G.AutoSell = false
 _G.BuyBait = false
 _G.AutoEquipBait = true
-_G.FishCFrame = CFrame.new(1321.10535, 8.08194065, 205.195343, -0.653882205, -9.13330211e-08, 0.756596386, -2.61356323e-08, 1, 9.81281474e-08, -0.756596386, 4.439012e-08, -0.653882205)
+_G.FishCFrame = CFrame.new(-2362.24561, 7.6426816, -285.750916, -0.291235417, -1.04014873e-07, -0.95665139, -1.07269827e-07, 1, -7.60717001e-08, 0.95665139, 8.04650568e-08, -0.291235417)
 --tap Autoskills
 _G.AutoZ = false
 _G.AutoX = false
@@ -613,7 +613,7 @@ local Window = Fluent:CreateWindow({
     Title = "Heavyweight Fishing V.1.6.0.1",
     SubTitle = "by Haru",
     TabWidth = 160,
-    Size = UDim2.fromOffset(750, 500),
+    Size = UDim2.fromOffset(580, 460),
     Acrylic = true,
     Theme = "Darker",
     MinimizeKey = Enum.KeyCode.LeftControl
@@ -1133,6 +1133,9 @@ local function runBuyBaitLoop()
     end
 
     buyBaitThread = task.spawn(function()
+        local perBaitDelay = 0.7
+        local loopDelay = 2.5
+
         while _G.BuyBait do
             local baitEvent = Events:FindFirstChild("BuyBait")
             if not baitEvent then
@@ -1158,16 +1161,18 @@ local function runBuyBaitLoop()
             end
 
             local buyAmount = (Options and Options.BuyBaitAmount and Options.BuyBaitAmount.Value) or 1
+            buyAmount = math.clamp(math.floor(buyAmount), 1, 10)
+
             for _, baitName in ipairs(selectedBaits) do
                 if not _G.BuyBait then
                     break
                 end
 
-                baitEvent:FireServer(baitName, math.max(1, math.floor(buyAmount)))
-                task.wait(0.1)
+                baitEvent:FireServer(baitName, buyAmount)
+                task.wait(perBaitDelay)
             end
 
-            task.wait(10)
+            task.wait(loopDelay)
         end
 
         buyBaitThread = nil
